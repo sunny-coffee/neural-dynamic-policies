@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class Elmo(nn.Module):
-    def __init__(self, state_dim, hidden_size, gru_layer_num=3, dropout=0.1):
+    def __init__(self, state_dim, hidden_size, gru_layer_num=3, dropout=0.1, init_w=0.003):
         super(Elmo, self).__init__()
         self.hidden_size = hidden_size
         self.gru_layer_num = gru_layer_num
@@ -12,6 +12,8 @@ class Elmo(nn.Module):
             [ElmoBlock(hidden_size, hidden_size, dropout) for _ in range(gru_layer_num)])
         # for fit
         self._linear = nn.Linear(hidden_size, state_dim)
+        self._linear.weight.data.uniform_(-init_w, init_w)
+        self._linear.bias.data.uniform_(-init_w, init_w)
         # for predict
         self.gamma = nn.Parameter(torch.FloatTensor(1))
         self.s = nn.Parameter(torch.FloatTensor(gru_layer_num+1))
@@ -33,7 +35,7 @@ class Elmo(nn.Module):
                 x, current_h = block(x, hidden)
                 hidden = current_h
                 hiddens[:,j,:] = current_h
-                outPosSeq[:,j,:] = self._linear(x)
+            outPosSeq[:,i,:] = self._linear(x)
 
         return outPosSeq
 

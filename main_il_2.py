@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 
 
 from mnist.utils.dataset import TrainDataset, TestDataset
@@ -18,13 +18,13 @@ parser.add_argument('--name', type=str, default='ndp-il')
 args = parser.parse_args()
 
 data_path = './mnist/data/40x40-smnist.mat'
-inds = np.arange(12000)
+inds = np.arange(1024+128)
 np.random.shuffle(inds)
-test_inds = inds[10000:]
-train_inds = inds[:10000]
+test_inds = inds[1024:]
+train_inds = inds[:1024]
 train_dataset = TrainDataset(data_path, train_inds)
 test_dataset = TestDataset(data_path, test_inds)
-train_loader = DataLoader(dataset=train_dataset, batch_size=256, shuffle=True)
+train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=2, shuffle=True)
 
 time = str(datetime.now())
@@ -35,7 +35,7 @@ time = time.replace('.', '_')
 model_save_path = './mnist/data/' + args.name + '_' + time
 os.mkdir(model_save_path)
 
-learning_rate = 1e-3
+learning_rate = 1e-4
 num_epochs = 151
 
 elmo = Elmo(state_dim=2, hidden_size=16)
@@ -61,12 +61,16 @@ for epoch in range(num_epochs):
     
     if epoch % 5 == 0:
         elmo.eval()
+        losses = []
         with torch.no_grad():
-            x, y = next(iter(test_loader))
-            y_h = elmo.fit(x)
-            print(y_h.data)
-            test = pretrain_criterion(y_h, y)
+            for i,data in enumerate(train_loader):
+                x, y =data
+                y_h = elmo.fit(x)
+                # print(y_h.data[0],y_h.data[1])
+                test_loss = pretrain_criterion(y_h, y)
+                losses.append(test_loss.item())
+        mean_loss = sum(losses)/len(losses)
         torch.save(elmo.state_dict(), model_save_path + '/elmo_model.pt')
-        print('Epoch: ' + str(epoch) + ', Test Error: ' + str(test.item()))
+        print('Epoch: ' + str(epoch) + ', Test Error: ' + str(mean_loss))
 
 
